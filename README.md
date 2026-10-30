@@ -1,36 +1,167 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Property Rental Management System
+
+A full-stack property rental management system built with Next.js, TypeScript, Supabase, and Prisma.
+
+The application provides organization-based property management, lease administration, invoice generation, payment tracking, and collection reporting.
+
+## Features
+
+- Authentication with Supabase.
+- Organization-based access control.
+- Role-based permissions for managers, staff, and tenants.
+- Property units and lease management.
+- Automatic monthly invoice generation.
+- Prorated final rent calculations.
+- Payment recording and verification workflows.
+- Payment allocation across outstanding invoices.
+- Online payment gateway webhook integration.
+- Idempotent payment webhook processing.
+- Monthly collection reports.
+- Audit logging.
+- Database security using PostgreSQL Row Level Security (RLS).
+
+## Tech Stack
+
+- Next.js 16 (App Router)
+- TypeScript
+- Tailwind CSS
+- Supabase (Authentication and PostgreSQL)
+- Prisma ORM
+- PostgreSQL
+- Vitest
 
 ## Getting Started
 
-First, run the development server:
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/myosry91/property-rental-management.git
+cd property-rental-management
+```
+
+### 2. Install dependencies
+
+```bash
+npm install
+```
+
+### 3. Configure environment variables
+
+Copy `.env.example` to `.env` and provide the required values.
+
+```bash
+cp .env.example .env
+```
+
+Never commit your actual `.env` file or expose service-role keys.
+
+### 4. Start local Supabase
+
+```bash
+npx supabase start
+```
+
+Configure the local Supabase credentials in `.env`.
+
+### 5. Apply database migrations
+
+```bash
+npx supabase db reset
+```
+
+### 6. Generate Prisma Client
+
+```bash
+npx prisma generate
+```
+
+### 7. Seed the database
+
+```bash
+npx tsx scripts/seed.ts
+```
+
+### 8. Start the development server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Testing
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Run the unit tests:
 
-## Learn More
+```bash
+npx vitest run
+```
 
-To learn more about Next.js, take a look at the following resources:
+Run TypeScript checks:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npx tsc --noEmit
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Run database lint:
 
-## Deploy on Vercel
+```bash
+npx supabase db lint
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Build for production:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run build
+```
+
+## Test Accounts
+
+The seed script creates test users for the following roles:
+
+- Manager: `manager@northwind.test`
+- Staff: `staff@northwind.test`
+- Tenant: `aisyah@northwind.test`
+- Tenant: `ben@northwind.test`
+
+The test password is configured through `SEED_PASSWORD`.
+
+## Project Structure
+
+```text
+src/
+  app/
+    api/
+    login/
+  components/
+  lib/
+    supabase/
+    billing.ts
+    auth.ts
+    prisma.ts
+
+prisma/
+  schema.prisma
+  migrations/
+
+supabase/
+  migrations/
+
+scripts/
+  seed.ts
+  verify-seed.ts
+  test-webhook.ts
+```
+
+## Security Notes
+
+- Keep secrets in environment variables.
+- Never expose `SUPABASE_SERVICE_ROLE_KEY` to the browser.
+- Enforce organization-level access control.
+- Validate payment gateway signatures.
+- Keep payment processing transactional and idempotent.
+- Use private storage for payment slips.
+
+## License
+
+This project was developed as a property rental management assessment project.
