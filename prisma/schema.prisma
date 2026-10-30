@@ -1,0 +1,187 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id           String        @id @default(uuid()) @db.Uuid
+  name         String
+  auditLogs    AuditLog[]
+  gatewayBills GatewayBill[]
+  invoices     Invoice[]
+  leases       Lease[]
+  memberships  Membership[]
+  payments     Payment[]
+  tenants      Tenant[]
+  units        Unit[]
+
+  @@map("organizations")
+}
+
+model Membership {
+  userId       String         @map("user_id") @db.Uuid
+  orgId        String         @map("org_id") @db.Uuid
+  role         MembershipRole
+  organization Organization   @relation(fields: [orgId], references: [id])
+
+  @@id([userId, orgId])
+  @@map("memberships")
+}
+
+model Unit {
+  id           String       @id @default(uuid()) @db.Uuid
+  orgId        String       @map("org_id") @db.Uuid
+  name         String
+  leases       Lease[]
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@unique([orgId, name])
+  @@map("units")
+}
+
+model Tenant {
+  id           String       @id @default(uuid()) @db.Uuid
+  orgId        String       @map("org_id") @db.Uuid
+  userId       String       @unique @map("user_id") @db.Uuid
+  fullName     String       @map("full_name")
+  email        String
+  phone        String?
+  leases       Lease[]
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@unique([orgId, email])
+  @@map("tenants")
+}
+
+model Lease {
+  id             String        @id @default(uuid()) @db.Uuid
+  orgId          String        @map("org_id") @db.Uuid
+  unitId         String        @map("unit_id") @db.Uuid
+  tenantId       String        @map("tenant_id") @db.Uuid
+  startDate      DateTime      @map("start_date") @db.Date
+  endDate        DateTime      @map("end_date") @db.Date
+  monthlyRentSen BigInt        @map("monthly_rent_sen")
+  depositSen     BigInt        @map("deposit_sen")
+  gatewayBills   GatewayBill[]
+  invoices       Invoice[]
+  organization   Organization  @relation(fields: [orgId], references: [id])
+  tenant         Tenant        @relation(fields: [tenantId], references: [id])
+  unit           Unit          @relation(fields: [unitId], references: [id])
+  payments       Payment[]
+
+  @@index([orgId, unitId, startDate, endDate])
+  @@map("leases")
+}
+
+model Invoice {
+  id           String              @id @default(uuid()) @db.Uuid
+  orgId        String              @map("org_id") @db.Uuid
+  leaseId      String              @map("lease_id") @db.Uuid
+  kind         InvoiceKind
+  periodIndex  Int?                @map("period_index")
+  periodStart  DateTime?           @map("period_start") @db.Date
+  periodEnd    DateTime?           @map("period_end") @db.Date
+  dueDate      DateTime            @map("due_date") @db.Date
+  amountSen    BigInt              @map("amount_sen")
+  lease        Lease               @relation(fields: [leaseId], references: [id])
+  organization Organization        @relation(fields: [orgId], references: [id])
+  allocations  PaymentAllocation[]
+
+  @@unique([leaseId, kind, periodIndex])
+  @@index([orgId, dueDate])
+  @@map("invoices")
+}
+
+model Payment {
+  id            String              @id @default(uuid()) @db.Uuid
+  orgId         String              @map("org_id") @db.Uuid
+  leaseId       String              @map("lease_id") @db.Uuid
+  amountSen     BigInt              @map("amount_sen")
+  unappliedSen  BigInt              @default(0) @map("unapplied_sen")
+  method        PaymentMethod
+  status        PaymentStatus
+  receivedAt    DateTime            @map("received_at") @db.Timestamptz(6)
+  slipPath      String?             @map("slip_path")
+  gatewayBillId String?             @unique @map("gateway_bill_id") @db.Uuid
+  allocations   PaymentAllocation[]
+  lease         Lease               @relation(fields: [leaseId], references: [id])
+  organization  Organization        @relation(fields: [orgId], references: [id])
+
+  @@index([orgId, receivedAt, status])
+  @@map("payments")
+}
+
+model PaymentAllocation {
+  id        String  @id @default(uuid()) @db.Uuid
+  orgId     String  @map("org_id") @db.Uuid
+  paymentId String  @map("payment_id") @db.Uuid
+  invoiceId String  @map("invoice_id") @db.Uuid
+  amountSen BigInt  @map("amount_sen")
+  invoice   Invoice @relation(fields: [invoiceId], references: [id])
+  payment   Payment @relation(fields: [paymentId], references: [id])
+
+  @@unique([paymentId, invoiceId])
+  @@index([orgId, invoiceId])
+  @@map("payment_allocations")
+}
+
+model GatewayBill {
+  id           String            @id @default(uuid()) @db.Uuid
+  orgId        String            @map("org_id") @db.Uuid
+  leaseId      String            @map("lease_id") @db.Uuid
+  amountSen    BigInt            @map("amount_sen")
+  status       GatewayBillStatus @default(pending)
+  createdAt    DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  lease        Lease             @relation(fields: [leaseId], references: [id])
+  organization Organization      @relation(fields: [orgId], references: [id])
+
+  @@index([orgId, status])
+  @@map("gateway_bills")
+}
+
+model AuditLog {
+  id           String       @id @default(uuid()) @db.Uuid
+  orgId        String       @map("org_id") @db.Uuid
+  actorId      String       @map("actor_id") @db.Uuid
+  action       String
+  entityId     String       @map("entity_id") @db.Uuid
+  details      Json
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@index([orgId, createdAt])
+  @@map("audit_log")
+}
+
+enum MembershipRole {
+  manager
+  staff
+}
+
+enum InvoiceKind {
+  deposit
+  rent
+}
+
+enum PaymentMethod {
+  cash
+  bank_transfer
+  online
+}
+
+enum PaymentStatus {
+  pending_verification
+  approved
+  rejected
+  voided
+}
+
+enum GatewayBillStatus {
+  pending
+  paid
+  failed
+}
